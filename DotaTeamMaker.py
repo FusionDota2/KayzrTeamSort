@@ -1,17 +1,20 @@
 """
-   Copyright 2017 Jonathan "FusionDota2" Driessen
+ This program sorts players into teams for Dota2 tournaments.
+ Copyright (C) 2017  Jonathan "Fusion" Driessen
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-       http://www.apache.org/licenses/LICENSE-2.0
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+    You should have received a copy of the GNU General Public License
+    along with this program.
+    If not, see https://www.gnu.org/licenses/gpl.html.
 """
 
 import csv
@@ -109,6 +112,11 @@ def distribute_captain(captain_dict, captain_mmr_list, team_amount):
     """
     Creates the empty teams in dictionary format and distributes the
     captains among them.
+    Example team format=
+    {'1': Player1, '2': Player2, '3': Player3, '4': Player4, '5': Player5,
+    'Avg': 0, 'Playercount': 5, 'Captain': 'Player1'})
+    Playercount later removed
+    Captain added LATER
     :param captain_dict:
     :param captain_mmr_list:
     :param team_amount:
@@ -166,10 +174,28 @@ def update_team_avg(team, added_mmr):
                          added_mmr) / team['Playercount']})
 
 
-def master_excecute():
+def write_away(teamlist, max_spread, role_frac):
+    with open('Outfile.csv', mode='w+') as outfile:
+        writer = csv.writer(outfile, delimiter=';')
+        writer.writerow(['There is a maximum spread of ' + str(
+            max_spread) + ' on the team MMR\'rs'])
+        writer.writerow(
+            [role_frac + ' People are playing their preffered roles'])
+        i = 0
+        for team in teamlist:
+            i += 1
+            writelist = list()
+            writer.writerow(['Team ' + str(i)])
+            for key in team.keys():
+                writelist.append(str(key) + ':' + str(team[key]))
+            writer.writerow(writelist)
+
+
+def __main__():
     pd, cd, pml, cml, ta = create_player_dicts()
     global players_on_pref_role
     players_on_pref_role = ta * 5
+    total_players = ta * 5
     distribute_roles(pd, cd, pml, cml, ta)
     tl, cml = distribute_captain(cd, cml, ta)
     players_added = 0
@@ -181,20 +207,17 @@ def master_excecute():
     maximum_avg = None
     for team in tl:
         del team['Playercount']
-        if minimum_avg == None:
+        if minimum_avg is None:
             minimum_avg = team['Avg']
-        if maximum_avg == None:
+        if maximum_avg is None:
             maximum_avg = team['Avg']
         if team['Avg'] < minimum_avg:
             minimum_avg = team['Avg']
         if team['Avg'] > maximum_avg:
             maximum_avg = team['Avg']
-    print(tl)
-    print(str(players_on_pref_role + ta)+ '/' + str(ta*5) + ' players are on '
-                                                            'their preffered'
-                                                            ' roles')
-    print('There is a ' + str(maximum_avg - minimum_avg) + ' spread on the '
-                                                           'averages')
+    max_spread = maximum_avg - minimum_avg
+    players_on_role_frac = str(players_on_pref_role) + '/' + str(total_players)
+    write_away(tl, max_spread, players_on_role_frac)
 
 
-master_excecute()
+__main__()
