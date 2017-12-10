@@ -66,7 +66,7 @@ def create_player_dicts():
                 {min(captain_mmr_list): captain_dict[min(captain_mmr_list)]})
             del captain_dict[min(captain_mmr_list)]
             captain_mmr_list.remove(min(captain_mmr_list))
-    while len(player_mmr_list) > team_amount*4:
+    while len(player_mmr_list) > team_amount * 4:
         del player_dict[min(player_mmr_list)]
         player_mmr_list.remove(min(player_mmr_list))
     player_mmr_list = sorted(player_mmr_list, reverse=True)
@@ -138,24 +138,32 @@ def distribute_roles(player_dict, captain_dict, player_mmr_list,
     return players_on_pref_role
 
 
-def distribute_captain(captain_dict, captain_mmr_list, team_amount):
+def create_team_dictionaries(team_amount):
     """
-    Creates the empty teams in dictionary format and distributes the
-    captains among them.
+    Creates the empty teams in dictionary format.
     Example team format=
     {'1': Player1, '2': Player2, '3': Player3, '4': Player4, '5': Player5,
-    'Avg': 0, *'Playercount': 5*, 'Captain': 'Player1'})
+    'Avg': 3500, *'Playercount': 5*, 'Captain': 'Player1'})
     *Playercount* removed at the end of main.
-    :param captain_dict:
-    :param captain_mmr_list:
     :param team_amount:
-    :return: The teamlist, captain mmr list and team amount.
+    :return List of empty teamms in dictionary format.:
     """
     teamlist = list()
     for i in range(team_amount):
         teamlist.append(
             {'1': None, '2': None, '3': None, '4': None, '5': None, 'Avg': 0,
                 'Playercount': 0})
+    return teamlist
+
+
+def distribute_captain(captain_dict, captain_mmr_list, teamlist):
+    """
+    distributes the captains amongst the teams.
+    :param teamlist:
+    :param captain_dict:
+    :param captain_mmr_list:
+    :return: The teamlist, captain mmr list and team amount.
+    """
     for team in teamlist:
         team.update({captain_dict[captain_mmr_list[0]][1]:
             captain_dict[captain_mmr_list[0]][0]})
@@ -164,11 +172,26 @@ def distribute_captain(captain_dict, captain_mmr_list, team_amount):
         team.update({'Playercount': 1})
         del captain_dict[int(captain_mmr_list[0])]
         captain_mmr_list.remove(captain_mmr_list[0])
-    return teamlist, captain_mmr_list
+    return None
 
 
-def add_player_round(player_dict, player_mmr_list, teamlist, cur_round,
+def add_player(player_dict, player_mmr_list, teamlist, cur_round,
         current_player_index=None):
+    """
+    Takes the highest mmr player yet to be distributed and looks for the the
+    team with the lowest mmr. If the team doesn't have a player yet on
+    position that the highest mmr player would fill it adds them to the team
+    and returns the new teamlist.
+    If the lowest mmr team already has a player on that role it calls the
+    function recusively now taking the second highest mmr player still
+    to be distributed.
+    :param player_dict:
+    :param player_mmr_list:
+    :param teamlist:
+    :param cur_round:
+    :param current_player_index:
+    :return teamlist with one player added:
+    """
     if current_player_index is None:
         current_player_index = 0
     current_player = player_dict[player_mmr_list[current_player_index]]
@@ -194,7 +217,7 @@ def add_player_round(player_dict, player_mmr_list, teamlist, cur_round,
             {'Playercount': teamlist[min_team_avg_index]['Playercount'] + 1})
         return teamlist
     else:
-        return add_player_round(player_dict, player_mmr_list, teamlist,
+        return add_player(player_dict, player_mmr_list, teamlist,
             cur_round, current_player_index + 1)
 
 
@@ -204,6 +227,14 @@ def update_team_avg(team, added_mmr):
 
 
 def write_away(teamlist, max_spread, role_frac):
+    """
+    Writes the team data to a csv file (one is created if it doesn't exist yet)
+    that includes the teamlist, max mmr spread and the fraction of players
+    playing their preffered role.
+    :param teamlist:
+    :param max_spread:
+    :param role_frac:
+    """
     with open('Outfile.csv', mode='w+') as outfile:
         writer = csv.writer(outfile, delimiter=';')
         writer.writerow(['There is a maximum spread of ' + str(
@@ -224,11 +255,12 @@ def __main__():
     pd, cd, pml, cml, ta = create_player_dicts()
     total_players = ta * 5
     players_on_pref_role = distribute_roles(pd, cd, pml, cml, ta)
-    tl, cml = distribute_captain(cd, cml, ta)
+    tl = create_team_dictionaries(ta)
+    distribute_captain(cd, cml, tl)
     players_added = 0
     for i in range(4):
         for cr in range(ta):
-            add_player_round(pd, pml, tl, i + 1)
+            add_player(pd, pml, tl, i + 1)
             players_added += 1
     minimum_avg = None
     maximum_avg = None
