@@ -35,6 +35,7 @@ def create_player_dicts():
     player_dict = dict()
     captain_mmr_list = list()
     player_mmr_list = list()
+    teamless_player_list = list()
     with open('PlayerList.csv') as infile:
         reader = csv.reader(infile, delimiter=';')
         for line in reader:
@@ -67,12 +68,31 @@ def create_player_dicts():
             del captain_dict[min(captain_mmr_list)]
             captain_mmr_list.remove(min(captain_mmr_list))
     while len(player_mmr_list) > team_amount * 4:
+        teamless_player_list.append(player_dict[min(player_mmr_list)][0])
         del player_dict[min(player_mmr_list)]
         player_mmr_list.remove(min(player_mmr_list))
     player_mmr_list = sorted(player_mmr_list, reverse=True)
     captain_mmr_list = sorted(captain_mmr_list, reverse=True)
     return player_dict, captain_dict, player_mmr_list, captain_mmr_list, \
-        team_amount
+        team_amount, teamless_player_list
+
+
+def create_team_dictionaries(team_amount):
+    """
+    Creates the empty teams in dictionary format.
+    Example team format=
+    {'1': Player1, '2': Player2, '3': Player3, '4': Player4, '5': Player5,
+    'Avg': 3500, *'Playercount': 5*, 'Captain': 'Player1'})
+    *Playercount* removed at the end of main.
+    :param team_amount:
+    :return List of empty teamms in dictionary format.:
+    """
+    teamlist = list()
+    for i in range(team_amount):
+        teamlist.append(
+            {'1': None, '2': None, '3': None, '4': None, '5': None, 'Avg': 0,
+                'Playercount': 0})
+    return teamlist
 
 
 def distribute_roles(player_dict, captain_dict, player_mmr_list,
@@ -136,24 +156,6 @@ def distribute_roles(player_dict, captain_dict, player_mmr_list,
                     0])]})
                 break
     return players_on_pref_role
-
-
-def create_team_dictionaries(team_amount):
-    """
-    Creates the empty teams in dictionary format.
-    Example team format=
-    {'1': Player1, '2': Player2, '3': Player3, '4': Player4, '5': Player5,
-    'Avg': 3500, *'Playercount': 5*, 'Captain': 'Player1'})
-    *Playercount* removed at the end of main.
-    :param team_amount:
-    :return List of empty teamms in dictionary format.:
-    """
-    teamlist = list()
-    for i in range(team_amount):
-        teamlist.append(
-            {'1': None, '2': None, '3': None, '4': None, '5': None, 'Avg': 0,
-                'Playercount': 0})
-    return teamlist
 
 
 def distribute_captain(captain_dict, captain_mmr_list, teamlist):
@@ -226,7 +228,7 @@ def update_team_avg(team, added_mmr):
                          added_mmr) / team['Playercount']})
 
 
-def write_away(teamlist, max_spread, role_frac):
+def write_away(teamlist, max_spread, role_frac, teamless_player_list):
     """
     Writes the team data to a csv file (one is created if it doesn't exist yet)
     that includes the teamlist, max mmr spread and the fraction of players
@@ -249,13 +251,15 @@ def write_away(teamlist, max_spread, role_frac):
             for key in team.keys():
                 writelist.append(str(key) + ':' + str(team[key]))
             writer.writerow(writelist)
+        writer.writerow(['Players without a team:'])
+        writer.writerow(teamless_player_list)
 
 
 def __main__():
-    pd, cd, pml, cml, ta = create_player_dicts()
+    pd, cd, pml, cml, ta, tlpl = create_player_dicts()
     total_players = ta * 5
-    players_on_pref_role = distribute_roles(pd, cd, pml, cml, ta)
     tl = create_team_dictionaries(ta)
+    players_on_pref_role = distribute_roles(pd, cd, pml, cml, ta)
     distribute_captain(cd, cml, tl)
     players_added = 0
     for i in range(4):
@@ -276,7 +280,7 @@ def __main__():
             maximum_avg = team['Avg']
     max_spread = maximum_avg - minimum_avg
     players_on_role_frac = str(players_on_pref_role) + '/' + str(total_players)
-    write_away(tl, max_spread, players_on_role_frac)
+    write_away(tl, max_spread, players_on_role_frac, tlpl)
 
 
 __main__()
