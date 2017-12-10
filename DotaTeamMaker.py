@@ -27,6 +27,7 @@ def create_player_dicts():
     format {'Player_mmr': ['Player_name', 'Player_prefered_role']}
     A list containing the MMRs of the players competing is made and sorted
     from high to low.
+    If there are to many players. Lowest MMR players get kicked out.
     :return: Player and captain dictionaries, team_amount and mmr lists
     """
     players = list()
@@ -65,6 +66,9 @@ def create_player_dicts():
                 {min(captain_mmr_list): captain_dict[min(captain_mmr_list)]})
             del captain_dict[min(captain_mmr_list)]
             captain_mmr_list.remove(min(captain_mmr_list))
+    while len(player_mmr_list) > team_amount*4:
+        del player_dict[min(player_mmr_list)]
+        player_mmr_list.remove(min(player_mmr_list))
     player_mmr_list = sorted(player_mmr_list, reverse=True)
     captain_mmr_list = sorted(captain_mmr_list, reverse=True)
     return player_dict, captain_dict, player_mmr_list, captain_mmr_list, \
@@ -85,13 +89,21 @@ def distribute_roles(player_dict, captain_dict, player_mmr_list,
     :param team_amount:
     :return: Player and captain list with everyone updated to their new role.
     """
-    global players_on_pref_role
+    players_on_pref_role = team_amount * 5
     role_amounts = list()
+    any_role_captain_mmr_list = list()
+    any_role_player_mmr_list = list()
     for i in range(6):
         role_amounts.append(0)
     for mmr in captain_mmr_list:
-        role_amounts[int(captain_dict[mmr][1])] += 1
+        if captain_dict[mmr][1] == 'Any':
+            any_role_captain_mmr_list.append(mmr)
+        else:
+            role_amounts[int(captain_dict[mmr][1])] += 1
     for mmr in player_mmr_list:
+        if player_dict[mmr][1] == 'Any':
+            any_role_player_mmr_list.append(mmr)
+            continue
         cur_role = int(player_dict[mmr][1])
         if role_amounts[cur_role] < team_amount:
             role_amounts[cur_role] += 1
@@ -105,7 +117,25 @@ def distribute_roles(player_dict, captain_dict, player_mmr_list,
                         0])]})
                     players_on_pref_role -= 1
                     break
-    return player_dict, captain_dict
+    for mmr in any_role_captain_mmr_list:
+        for role in enumerate(role_amounts):
+            if role[0] == 0:
+                continue
+            elif role[1] < team_amount:
+                role_amounts[role[0]] += 1
+                captain_dict.update({mmr: [captain_dict[mmr][0], str(role[
+                    0])]})
+                break
+    for mmr in any_role_player_mmr_list:
+        for role in enumerate(role_amounts):
+            if role[0] == 0:
+                continue
+            elif role[1] < team_amount:
+                role_amounts[role[0]] += 1
+                player_dict.update({mmr: [player_dict[mmr][0], str(role[
+                    0])]})
+                break
+    return players_on_pref_role
 
 
 def distribute_captain(captain_dict, captain_mmr_list, team_amount):
@@ -114,9 +144,8 @@ def distribute_captain(captain_dict, captain_mmr_list, team_amount):
     captains among them.
     Example team format=
     {'1': Player1, '2': Player2, '3': Player3, '4': Player4, '5': Player5,
-    'Avg': 0, 'Playercount': 5, 'Captain': 'Player1'})
-    Playercount later removed
-    Captain added LATER
+    'Avg': 0, *'Playercount': 5*, 'Captain': 'Player1'})
+    *Playercount* removed at the end of main.
     :param captain_dict:
     :param captain_mmr_list:
     :param team_amount:
@@ -193,10 +222,8 @@ def write_away(teamlist, max_spread, role_frac):
 
 def __main__():
     pd, cd, pml, cml, ta = create_player_dicts()
-    global players_on_pref_role
-    players_on_pref_role = ta * 5
     total_players = ta * 5
-    distribute_roles(pd, cd, pml, cml, ta)
+    players_on_pref_role = distribute_roles(pd, cd, pml, cml, ta)
     tl, cml = distribute_captain(cd, cml, ta)
     players_added = 0
     for i in range(4):
