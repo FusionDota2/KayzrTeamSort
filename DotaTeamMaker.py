@@ -45,29 +45,28 @@ def create_player_dicts(PlayerList):
         for player in players:
             player[1] = int(player[1])
             if player[3] == 'False':
-                if player[1] in player_dict.keys():
+                while player[1] in player_dict.keys() or player[1] in captain_dict.keys():
                     player[1] += 1
                 player_dict.update({player[1]: [player[0], player[2]]})
                 player_mmr_list.append(player[1])
             else:
-                if player[1] in captain_dict.keys():
+                while player[1] in captain_dict.keys() or player[1] in player_dict.keys():
                     player[1] += 1
                 captain_dict.update({player[1]: [player[0], player[2]]})
                 captain_mmr_list.append(player[1])
     team_amount = len(players) // 5
-    if len(captain_mmr_list) != team_amount:
-        while len(captain_mmr_list) < team_amount:
-            captain_mmr_list.append(max(player_mmr_list))
-            captain_dict.update(
-                {max(player_mmr_list): player_dict[max(player_mmr_list)]})
-            del player_dict[max(player_mmr_list)]
-            player_mmr_list.remove(max(player_mmr_list))
-        while (len(captain_mmr_list)) > team_amount:
-            player_mmr_list.append(min(captain_mmr_list))
-            player_dict.update(
-                {min(captain_mmr_list): captain_dict[min(captain_mmr_list)]})
-            del captain_dict[min(captain_mmr_list)]
-            captain_mmr_list.remove(min(captain_mmr_list))
+    while len(captain_mmr_list) < team_amount:
+        captain_mmr_list.append(max(player_mmr_list))
+        captain_dict.update(
+            {max(player_mmr_list): player_dict[max(player_mmr_list)]})
+        del player_dict[max(player_mmr_list)]
+        player_mmr_list.remove(max(player_mmr_list))
+    while (len(captain_mmr_list)) > team_amount:
+        player_mmr_list.append(min(captain_mmr_list))
+        player_dict.update(
+            {min(captain_mmr_list): captain_dict[min(captain_mmr_list)]})
+        del captain_dict[min(captain_mmr_list)]
+        captain_mmr_list.remove(min(captain_mmr_list))
     while len(player_mmr_list) > team_amount * 4:
         teamless_player_list.append(player_dict[min(player_mmr_list)][0])
         del player_dict[min(player_mmr_list)]
@@ -75,8 +74,7 @@ def create_player_dicts(PlayerList):
     player_mmr_list = sorted(player_mmr_list, reverse=True)
     captain_mmr_list = sorted(captain_mmr_list, reverse=True)
     return player_dict, captain_dict, player_mmr_list, captain_mmr_list, \
-        team_amount, teamless_player_list
-
+            team_amount, teamless_player_list
 
 def create_team_dictionaries(team_amount):
     """
