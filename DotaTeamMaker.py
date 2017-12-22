@@ -18,9 +18,10 @@
 """
 
 import csv
+import sys
 
 
-def create_player_dicts():
+def create_player_dicts(PlayerList):
     """
     This creates the player dictionary conataining the mmr, role and name
     from the csv file. A seperate dictionary is created for the captains.
@@ -36,7 +37,7 @@ def create_player_dicts():
     captain_mmr_list = list()
     player_mmr_list = list()
     teamless_player_list = list()
-    with open('PlayerList.csv') as infile:
+    with open(PlayerList) as infile:
         reader = csv.reader(infile, delimiter=';')
         for line in reader:
             if line[4] == 'True':
@@ -255,8 +256,8 @@ def write_away(teamlist, max_spread, role_frac, teamless_player_list):
         writer.writerow(teamless_player_list)
 
 
-def __main__():
-    pd, cd, pml, cml, ta, tlpl = create_player_dicts()
+def __main__(PlayerList):
+    pd, cd, pml, cml, ta, tlpl = create_player_dicts(PlayerList)
     total_players = ta * 5
     tl = create_team_dictionaries(ta)
     players_on_pref_role = distribute_roles(pd, cd, pml, cml, ta)
@@ -282,5 +283,7 @@ def __main__():
     players_on_role_frac = str(players_on_pref_role) + '/' + str(total_players)
     write_away(tl, max_spread, players_on_role_frac, tlpl)
 
-
-__main__()
+if len(sys.argv) != 2:
+    print('Please submit a (valid) playerlist file.')
+else:
+    __main__(sys.argv[1])
