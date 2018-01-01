@@ -125,18 +125,45 @@ def distribute_roles(player_dict, captain_dict, player_mmr_list,
     player_mmr_list_workcopy = sorted(player_mmr_list)
     for i in range(6):
         role_amounts.append(0)
-    for mmr in captain_mmr_list:
+    cml_itercopy = captain_mmr_list.copy()
+    for mmr in cml_itercopy:
         if captain_dict[mmr][1] == 'Any':
             any_role_captain_mmr_list.append(mmr)
-        else:
-            role_amounts[int(captain_dict[mmr][1])] += 1
-    for mmr in player_mmr_list_workcopy:
+            cml_itercopy.remove(mmr)
+    pmlwc_intercopy = player_mmr_list_workcopy.copy()
+    for mmr in pmlwc_intercopy:
+        if player_dict[mmr][1] == 'Any':
+            any_role_player_mmr_list.append(mmr)
+            player_mmr_list_workcopy.remove(mmr)
+    for mmrlist in [cml_itercopy, player_mmr_list_workcopy]:
+        mmrlist_itercopy = mmrlist.copy()
         for role in [4, 5]:
-            while role_amounts[role] > team_amount:
-                if int(player_dict[mmr][1]) == role:
-                    role_amounts[role] += 1
-                    player_mmr_list_workcopy.remove(mmr)
+            while role_amounts[role] < team_amount:
+                for mmr in mmrlist_itercopy:
+                    if mmrlist == captain_mmr_list:
+                        if int(captain_dict[mmr][1]) == role:
+                            role_amounts[role] += 1
+                            mmrlist.remove(mmr)
+                    if mmrlist == player_mmr_list_workcopy:
+                        if int(player_dict[mmr][1]) == role:
+                            role_amounts[role] += 1
+                            mmrlist.remove(mmr)
+                break
     player_mmr_list_workcopy = sorted(player_mmr_list_workcopy, reverse=True)
+    for mmr in cml_itercopy:
+        cur_role = int(captain_dict[mmr][1])
+        if role_amounts[cur_role] < team_amount:
+            role_amounts[cur_role] += 1
+        else:
+            for role in enumerate(role_amounts):
+                if role[0] == 0:
+                    continue
+                elif role[1] < team_amount:
+                    role_amounts[role[0]] += 1
+                    captain_dict.update({mmr: [captain_dict[mmr][0],
+                        str(role[0])]})
+                    players_on_pref_role -= 1
+                    break
     for mmr in player_mmr_list_workcopy:
         if player_dict[mmr][1] == 'Any':
             any_role_player_mmr_list.append(mmr)
