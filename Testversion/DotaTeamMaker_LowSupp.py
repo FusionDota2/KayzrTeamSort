@@ -306,13 +306,13 @@ def update_team_avg(team, added_mmr):
                          added_mmr) / team['Playercount']})
 
 
-def write_away(teamlist, max_spread, role_frac, teamless_player_list):
+def write_away(teamlist, max_spread, role_frac, teamless_player_list, outfile):
     """
     Writes the team data to a csv file (one is created if it doesn't exist yet)
     that includes the teamlist, max mmr spread and the fraction of players
     playing their preffered role.
     """
-    with open('Outfile.csv', mode='w+') as outfile:
+    with open(outfile, mode='w+') as outfile:
         writer = csv.writer(outfile, delimiter=';')
         writer.writerow(['There is a maximum spread of ' + str(
             max_spread) + ' on the team MMR\'rs'])
@@ -330,7 +330,7 @@ def write_away(teamlist, max_spread, role_frac, teamless_player_list):
         writer.writerow(teamless_player_list)
 
 
-def __main__(playerfile):
+def __main__(playerfile, outfile = 'Outfile.csv'):
     """
     pd = player dictionary
     cd = captain dictionary
@@ -366,27 +366,46 @@ def __main__(playerfile):
             maximum_avg = team['Avg']
     max_spread = maximum_avg - minimum_avg
     players_on_role_frac = str(players_on_pref_role) + '/' + str(total_players)
-    write_away(tl, max_spread, players_on_role_frac, tlpl)
+    write_away(tl, max_spread, players_on_role_frac, tlpl, outfile)
 
-if len(sys.argv[1]) == 1:
+if len(sys.argv) == 1:
     sys.argv.append('versioninfo')
-elif sys.argv[1] == 'versioninfo':
+if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp')
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 0.1')
-    print('Last updated on 12/01/2018')
+    print('Current version: 0.1.b')
+    print('Last updated on 13/01/2018')
 elif not sys.argv[1].endswith('.csv'):
         print('\nInput error')
         print('Input file is not a .csv file')
         print('Correct commandline input is:')
-        print('python <name of DotaTeamMaker> <Input data>')
-else:
+        print('python <name of DotaTeamMaker> <Input data> <Optional: '
+              'Outfile name>')
+elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
     except FileNotFoundError:
         print('\nInput error')
         print('Input file doesn\'t exist')
         print('Correct commandline input is:')
-        print('python <name of DotaTeamMaker> <Input data>')
+        print('python <name of DotaTeamMaker> <Input data> <Optional: '
+              'Outfile name>')
+    except:
+        raise
+elif len(sys.argv) == 3:
+    if not sys.argv[2].endswith('.csv'):
+        print('\nInput error')
+        print('Output file is not a .csv file')
+        print('Correct commandline input is:')
+        print('python <name of DotaTeamMaker> <Input data> <Optional: '
+              'Outfile name>')
+    try:
+        __main__(sys.argv[1], sys.argv[2])
+    except FileNotFoundError:
+        print('\nInput error')
+        print('Input file doesn\'t exist')
+        print('Correct commandline input is:')
+        print('python <name of DotaTeamMaker> <Input data> <Optional: '
+              'Outfile name>')
     except:
         raise
