@@ -368,15 +368,25 @@ def __main__(playerfile):
     players_on_role_frac = str(players_on_pref_role) + '/' + str(total_players)
     write_away(tl, max_spread, players_on_role_frac, tlpl)
 
-try:
-    if sys.argv[1] == 'versioninfo':
-        print('\nDotaTeamMaker_LowSupp')
-        print('Written by Jonathan \'Fusion\' Driessen')
-        print('Current version: 0.1')
-        print('Last updated on 12/01/2018')
-    else:
+if len(sys.argv[1]) == 1:
+    sys.argv.append('versioninfo')
+elif sys.argv[1] == 'versioninfo':
+    print('\nDotaTeamMaker_LowSupp')
+    print('Written by Jonathan \'Fusion\' Driessen')
+    print('Current version: 0.1')
+    print('Last updated on 12/01/2018')
+elif not sys.argv[1].endswith('.csv'):
+        print('\nInput error')
+        print('Input file is not a .csv file')
+        print('Correct commandline input is:')
+        print('python <name of DotaTeamMaker> <Input data>')
+else:
+    try:
         __main__(sys.argv[1])
-except:
-    print('\nInput error')
-    print('Correct commandline input is:')
-    print('python <name of DotaTeamMaker> <Input data>')
+    except FileNotFoundError:
+        print('\nInput error')
+        print('Input file doesn\'t exist')
+        print('Correct commandline input is:')
+        print('python <name of DotaTeamMaker> <Input data>')
+    except:
+        raise
