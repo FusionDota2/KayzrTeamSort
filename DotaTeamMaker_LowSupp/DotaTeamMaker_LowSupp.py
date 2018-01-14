@@ -1,8 +1,11 @@
 import csv
 import sys
+from os.path import isfile
 
 
 class Player(object):
+    # Purposely did not use getters and setters for each variable because
+    # I'm not sure yet what way I want to go with this program.
     players_off_role = 0
 
     def __init__(self, name, mmr, role, captain_pref):
@@ -17,7 +20,7 @@ class Player(object):
         elif role == 'Any':
             self.role_preference = 'Any'
         else:
-            sys.exit('Role has to be a number between 1 and 4 or \'Any\'.')
+            sys.exit('Role has to be a number between 1 and 5 or \'Any\'.')
         self.role = None
         if captain_pref == 'True' or captain_pref == 'False' or captain_pref \
                 is True or captain_pref is False:
@@ -313,7 +316,7 @@ if len(sys.argv) == 1:
 if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp')
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.0.a')
+    print('Current version: 1.0.b')
     print('Last updated on 14/01/2018')
 elif not sys.argv[1].endswith('.csv'):
         print('\nInput error')
@@ -340,7 +343,16 @@ elif len(sys.argv) == 3:
         print('python <name of DotaTeamMaker> <Input data> <Optional: '
               'Outfile name>')
     try:
-        __main__(sys.argv[1], sys.argv[2])
+        if isfile(sys.argv[2]):
+            print('This file will be overwritten: '
+                                 + str(sys.argv[2]))
+            confirmation = input('Are you sure? (y/n)')
+            if confirmation == 'y':
+                __main__(sys.argv[1], sys.argv[2])
+            else:
+                print('Canceled.')
+        else:
+            __main__(sys.argv[1], sys.argv[2])
     except FileNotFoundError:
         print('\nInput error')
         print('Input file doesn\'t exist')
@@ -349,3 +361,4 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
+
