@@ -1,8 +1,11 @@
 import csv
 import sys
+from os.path import isfile
 
 
 class Player(object):
+    # Didn't put in getters and setters because I'm not sure yet
+    # Where I want to go with this program.
     players_off_role = 0
     weights = {1: 1.3, 2: 1.3, 3: 1, 4: 0.8, 5: 0.8}
 
@@ -219,7 +222,9 @@ def distribute_roles(players, captains, team_amount):
                     player.role = role[0]
                     player.calc_mmr()
                     break
-    return None
+    players = sorted(players, key=lambda x: x.mmr, reverse=True)
+    captains = sorted(captains, key=lambda x: x.mmr, reverse=True)
+    return players, captains
 
 
 def distribute_captains(captains, teams):
@@ -292,7 +297,7 @@ def __main__(playerfile, outfile='Outfile.csv'):
     total_players = team_amount*5
     players, captains = update_captain_status(players, team_amount)
     teams = create_teams(team_amount)
-    distribute_roles(players, captains, team_amount)
+    players, captains = distribute_roles(players, captains, team_amount)
     distribute_captains(captains, teams)
     players_worklist = players.copy()
     for cur_round in range(1, 5):
@@ -318,14 +323,8 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.0.a')
+    print('Current version: 1.0.b')
     print('Last updated on 14/01/2018')
-elif not sys.argv[1].endswith('.csv'):
-        print('\nInput error')
-        print('Input file is not a .csv file')
-        print('Correct commandline input is:')
-        print('python <name of DotaTeamMaker> <Input data> <Optional: '
-              'Outfile name>')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
@@ -345,7 +344,16 @@ elif len(sys.argv) == 3:
         print('python <name of DotaTeamMaker> <Input data> <Optional: '
               'Outfile name>')
     try:
-        __main__(sys.argv[1], sys.argv[2])
+        if isfile(sys.argv[2]):
+            print('This file will be overwritten: '
+                                 + str(sys.argv[2]))
+            confirmation = input('Are you sure? (y/n)')
+            if confirmation == 'y':
+                __main__(sys.argv[1], sys.argv[2])
+            else:
+                print('Canceled.')
+        else:
+            __main__(sys.argv[1], sys.argv[2])
     except FileNotFoundError:
         print('\nInput error')
         print('Input file doesn\'t exist')
@@ -354,3 +362,4 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
+
