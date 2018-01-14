@@ -316,7 +316,7 @@ if len(sys.argv) == 1:
     sys.argv.append('versioninfo')
 if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
-    print('Current weights: ' + str(Person.weights))
+    print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
     print('Current version: 1.0.a')
     print('Last updated on 14/01/2018')
