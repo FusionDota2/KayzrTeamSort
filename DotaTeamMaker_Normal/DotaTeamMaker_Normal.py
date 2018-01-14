@@ -127,22 +127,6 @@ def distribute_roles(players, captains, team_amount):
         role_amounts.append(0)
     # 6 entries so that the role matches the index in the list.
     # This is just QOL.
-    for role in [5, 4]:
-        for captain in sorted(captains, key=lambda x: x.real_mmr):
-            if captain.role_preference == 'Any':
-                continue
-            if captain.role_preference == role and role_amounts[role]\
-                    < team_amount:
-                captain.role = role
-                role_amounts[role] += 1
-    for role in [5, 4]:
-        for player in sorted(players, key=lambda x: x.real_mmr):
-            if player.role_preference == 'Any':
-                continue
-            if player.role_preference == role and role_amounts[role]\
-                    < team_amount:
-                player.role = role
-                role_amounts[role] += 1
     for captain in captains:
         # Captains will get priority for their role assignment.
         if captain.role is None:
@@ -311,7 +295,7 @@ def __main__(playerfile, outfile='Outfile.csv'):
 if len(sys.argv) == 1:
     sys.argv.append('versioninfo')
 if sys.argv[1] == 'versioninfo':
-    print('\nDotaTeamMaker_LowSupp')
+    print('\nDotaTeamMaker_Normal')
     print('Written by Jonathan \'Fusion\' Driessen')
     print('Current version: 1.0.a')
     print('Last updated on 14/01/2018')

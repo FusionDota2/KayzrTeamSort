@@ -4,6 +4,7 @@ import sys
 
 class Player(object):
     players_off_role = 0
+    weights = {1: 1.3, 2: 1.3, 3: 1, 4: 0.8, 5: 0.8}
 
     def __init__(self, name, mmr, role, captain_pref):
         self.name = name
@@ -37,6 +38,9 @@ class Player(object):
                 self.role_preference, self.role,self.captain_preference,
                 self.active_captain)
 
+    def calc_mmr(self):
+        self.mmr = self.real_mmr * self.weights[self.role]
+
 
 class Team(object):
     def __init__(self):
@@ -56,7 +60,7 @@ class Team(object):
         total = 0
         for entry in self.playerlist:
             if isinstance(entry, Player):
-                total += entry.real_mmr
+                total += entry.mmr
         self.average = float(total / self.playercount)
         self.team['Avg'] = self.average
 
@@ -135,6 +139,7 @@ def distribute_roles(players, captains, team_amount):
                     < team_amount:
                 captain.role = role
                 role_amounts[role] += 1
+                captain.calc_mmr()
     for role in [5, 4]:
         for player in sorted(players, key=lambda x: x.real_mmr):
             if player.role_preference == 'Any':
@@ -143,6 +148,7 @@ def distribute_roles(players, captains, team_amount):
                     < team_amount:
                 player.role = role
                 role_amounts[role] += 1
+                player.calc_mmr()
     for captain in captains:
         # Captains will get priority for their role assignment.
         if captain.role is None:
@@ -152,6 +158,7 @@ def distribute_roles(players, captains, team_amount):
                 if role_amounts[captain.role_preference] < team_amount:
                     captain.role = captain.role_preference
                     role_amounts[captain.role_preference] += 1
+                    captain.calc_mmr()
                     # If the role the captain wants is avalable he will
                     # receieve it and the role_amounts will be updated.
                 else:
@@ -165,6 +172,7 @@ def distribute_roles(players, captains, team_amount):
                             captain.role = role[0]
                             role_amounts[role[0]] += 1
                             Player.players_off_role += 1
+                            captain.calc_mmr()
                             break
                             # And available role has been found and the
                             # captain will be assigned this role. The loop
@@ -177,6 +185,7 @@ def distribute_roles(players, captains, team_amount):
                 if role_amounts[player.role_preference] < team_amount:
                     player.role = player.role_preference
                     role_amounts[player.role_preference] += 1
+                    player.calc_mmr()
                 else:
                     for role in enumerate(role_amounts):
                         if role[0] == 0:
@@ -185,6 +194,7 @@ def distribute_roles(players, captains, team_amount):
                             player.role = role[0]
                             role_amounts[role[0]] += 1
                             Player.players_off_role += 1
+                            player.calc_mmr()
                             break
     # These next 2 loops distribute the remaining free roles amongst the any
     # captains and players. Priorty: Captain -> Player, High MMR -> Low MMR,
@@ -197,6 +207,7 @@ def distribute_roles(players, captains, team_amount):
                 elif role[1] < team_amount:
                     role_amounts[role[0]] += 1
                     captain.role = role[0]
+                    captain.calc_mmr()
                     break
     for player in players:
         if player.role_preference == 'Any':
@@ -206,15 +217,8 @@ def distribute_roles(players, captains, team_amount):
                 elif role[1] < team_amount:
                     role_amounts[role[0]] += 1
                     player.role = role[0]
+                    player.calc_mmr()
                     break
-    for i in [1,2,3,4,5,]:
-        som = 0
-        for player in players:
-            if player.role == i:
-                som += 1
-        for captain in captains:
-            if captain.role == i:
-                som += 1
     return None
 
 
@@ -311,7 +315,8 @@ def __main__(playerfile, outfile='Outfile.csv'):
 if len(sys.argv) == 1:
     sys.argv.append('versioninfo')
 if sys.argv[1] == 'versioninfo':
-    print('\nDotaTeamMaker_LowSupp')
+    print('\nDotaTeamMaker_LowSupp_Weighted')
+    print('Current weights: ' + str(Person.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
     print('Current version: 1.0.a')
     print('Last updated on 14/01/2018')
