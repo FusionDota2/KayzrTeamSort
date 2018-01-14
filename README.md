@@ -13,8 +13,8 @@ Current versions:
 Versions in Development:
   
   * DotaTeamMaker_LowSupp_Weighted:
-   * Same sorting algorithm as DotaTeamMaker_LowSupp.
-   * Players get appointed custom MMR' based on their real MMR and the impact of the role they are playing.
+    * Same sorting algorithm as DotaTeamMaker_LowSupp.
+    * Players get appointed custom MMR' based on their real MMR and the impact of the role they are playing.
     * Current weights: {1: 1.3, 2: 1.3, 3: 1, 4: 0.8, 5: 0.8}
 
 Depricated Versions:
