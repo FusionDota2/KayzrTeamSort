@@ -2,6 +2,8 @@
 Program used for sorting players into teams for Dota 2 tournaments.
 
 Current versions:
+(These version are not identical yet to the Depricated Version in regard to sorting.
+Depricated Versions still give better results sometimes.)
 
   * DotaTeamMaker_Normal:
     * Distributes roles amongst players first. With priority from High to low MMR. Pos 1 to 5.
