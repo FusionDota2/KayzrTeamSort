@@ -1,3 +1,23 @@
+"""
+ This program sorts players into teams for Dota2 tournaments.
+ Copyright (C) 2018  Jonathan "Fusion" Driessen
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.
+    If not, see https://www.gnu.org/licenses/gpl.html.
+"""
+
+
 import csv
 import sys
 from os.path import isfile
@@ -165,22 +185,10 @@ def distribute_roles(players, captains, team_amount):
                     # If the role the captain wants is avalable he will
                     # receieve it and the role_amounts will be updated.
                 else:
-                    for role in enumerate(role_amounts):
-                        # This means the role the player wanted is no longer
-                        # available and this loop goes through the roles
-                        # from 1->5 to see which one is still available.
-                        if role[0] == 0:
-                            break
-                        elif role[1] < team_amount:
-                            captain.role = role[0]
-                            role_amounts[role[0]] += 1
-                            Player.players_off_role += 1
-                            captain.calc_mmr()
-                            break
-                            # And available role has been found and the
-                            # captain will be assigned this role. The loop
-                            # will stop and the tracker for players off pref
-                            # role is updated.
+                    Player.players_off_role += 1
+                    continue
+                    # If the role the capatin wants is taken, he will
+                    # Get one assigned later with the 'Any' play/capt
     for player in players:
         # Same but then for the players.
         if player.role is None:
@@ -190,37 +198,25 @@ def distribute_roles(players, captains, team_amount):
                     role_amounts[player.role_preference] += 1
                     player.calc_mmr()
                 else:
-                    for role in enumerate(role_amounts):
-                        if role[0] == 0:
-                            continue
-                        elif role[1] < team_amount:
-                            player.role = role[0]
-                            role_amounts[role[0]] += 1
-                            Player.players_off_role += 1
-                            player.calc_mmr()
-                            break
-    # These next 2 loops distribute the remaining free roles amongst the any
-    # captains and players. Priorty: Captain -> Player, High MMR -> Low MMR,
-    # Position 1 -> Position 5
-    for captain in captains:
-        if captain.role_preference == 'Any':
-            for role in enumerate(role_amounts):
-                if role[0] == 0:
+                    Player.players_off_role += 1
                     continue
-                elif role[1] < team_amount:
-                    role_amounts[role[0]] += 1
-                    captain.role = role[0]
-                    captain.calc_mmr()
-                    break
+    # These next 2 loops distribute the remaining free roles amongst the
+    # captains and players. Priorty: High->Low MMR,Position 1 -> Position 5
+    everyone = list()
     for player in players:
-        if player.role_preference == 'Any':
+        everyone.append(player)
+    for captain in captains:
+        everyone.append(captain)	
+    everyone.sort(key= lambda x: x.real_mmr, reverse= True)
+    for person in everyone:
+        if person.role_preference == 'Any' or person.role == None:
             for role in enumerate(role_amounts):
                 if role[0] == 0:
                     continue
                 elif role[1] < team_amount:
                     role_amounts[role[0]] += 1
-                    player.role = role[0]
-                    player.calc_mmr()
+                    person.role = role[0]
+                    person.calc_mmr()
                     break
     players = sorted(players, key=lambda x: x.mmr, reverse=True)
     captains = sorted(captains, key=lambda x: x.mmr, reverse=True)
@@ -276,8 +272,7 @@ def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
     """
     with open(outfile, mode='w+') as outfile:
         writer = csv.writer(outfile, delimiter=';')
-        writer.writerow(['There is a maximum spread of ' + str(
-            max_spread) + ' on the team MMR\'rs'])
+        writer.writerow(['There is a maximum spread of %.1f on the team MMR\'rs' % max_spread])
         writer.writerow(
             [role_frac + ' People are playing their preffered roles'])
         i = 0
@@ -323,8 +318,8 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.0.b')
-    print('Last updated on 14/01/2018')
+    print('Current version: 1.1.a')
+    print('Last updated on 19/01/2018')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
@@ -362,4 +357,3 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
-
