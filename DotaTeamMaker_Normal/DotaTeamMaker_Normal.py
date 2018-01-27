@@ -21,26 +21,37 @@ import csv
 import sys
 from os.path import isfile
 
+POSSIBLE_ROLES = [1, 2, 3, 4, 5]
+
 
 class Player(object):
-    # Purposely did not use getters and setters for each variable because
-    # I'm not sure yet what way I want to go with this program.
+    # Didn't put in getters and setters because I'm not sure yet
+    # Where I want to go with this program.
     players_off_role = 0
 
     def __init__(self, name, mmr, role, captain_pref):
         self.name = name
+
         try:
             self.real_mmr = int(mmr)
         except:
             sys.exit('MMR has to be a number. Not ' + mmr)
+
         self.mmr = None
-        if not role == 'Any' and 5 >= int(role) >= 1:
-             self.role_preference = int(role)
-        elif role == 'Any':
-            self.role_preference = 'Any'
-        else:
-            sys.exit('Role has to be a number between 1 and 5 or \'Any\'.')
+
+        role = role.split(',')
+        for i in range(len(role)):
+            if role[i] == 'Any':
+                break
+            elif int(role[i]) in POSSIBLE_ROLES:
+                role[i] = int(role[i])
+            else:
+                sys.exit('Role has to be a number between 1 and 5 or '
+                         '\'Any\'.')
+        self.role_preference = role
+
         self.role = None
+
         if captain_pref == 'True' or captain_pref == 'False' or captain_pref \
                 is True or captain_pref is False:
             if captain_pref == 'True':
@@ -51,13 +62,17 @@ class Player(object):
             sys.exit('The active field has to be True or '
                      'False. Not ' + str(captain_pref))
         self.captain_preference = captain_pref
+
         self.active_captain = False
 
     def __str__(self):
         return '%s: MMR = %s, role_pref = %s, role = %s, captainpref = %s, ' \
                'captainstatus = %s' % (self.name, self.real_mmr,
-                self.role_preference, self.role,self.captain_preference,
-                self.active_captain)
+        self.role_preference, self.role, self.captain_preference,
+        self.active_captain)
+
+    def calc_mmr(self):
+        self.mmr = self.real_mmr
 
 
 class Team(object):
@@ -69,7 +84,7 @@ class Team(object):
         self.playercount = 0
         self.captain = None
         self.team = {1: None, 2: None, 3: None, 4: None, 5: None, 'Captain':
-                     None, 'Avg': 0, 'Playercount': 0}
+            None, 'Avg': 0, 'Playercount': 0}
 
     def __str__(self):
         return str(self.team)
@@ -78,7 +93,7 @@ class Team(object):
         total = 0
         for entry in self.playerlist:
             if isinstance(entry, Player):
-                total += entry.real_mmr
+                total += entry.mmr
         self.average = float(total / self.playercount)
         self.team['Avg'] = self.average
 
@@ -144,55 +159,53 @@ def create_teams(team_amount):
 
 def distribute_roles(players, captains, team_amount):
     role_amounts = list()
+    everyone = list()
+    for player in players:
+        everyone.append(player)
+    for captain in captains:
+        everyone.append(captain)
+    everyone.sort(key=lambda x: x.real_mmr)
     # This will be used to check how many players of each role there are.
     for i in range(6):
         role_amounts.append(0)
     # 6 entries so that the role matches the index in the list.
     # This is just QOL.
-    for captain in captains:
-        # Captains will get priority for their role assignment.
-        if captain.role is None:
-            if captain.role_preference == 'Any':
-                continue
-            else:
-                if role_amounts[captain.role_preference] < team_amount:
-                    captain.role = captain.role_preference
-                    role_amounts[captain.role_preference] += 1
-                    # If the role the captain wants is avalable he will
-                    # receieve it and the role_amounts will be updated.
+    for person in everyone:
+        if person.role is None:
+            for role in person.role_preference:
+                if role == 'Any':
+                    break
                 else:
-                    Player.players_off_role += 1
-                    continue
-                    # If the role the capatin wants is taken, he will
-                    # Get one assigned later with the 'Any' play/capt
-    for player in players:
-        # Same but then for the players.
-        if player.role is None:
-            if player.role_preference != 'Any':
-                if role_amounts[player.role_preference] < team_amount:
-                    player.role = player.role_preference
-                    role_amounts[player.role_preference] += 1
-                else:
-                    Player.players_off_role += 1
-                    continue
+                    if role_amounts[role] < team_amount:
+                        person.role = role
+                        role_amounts[role] += 1
+                        person.calc_mmr()
+                        break
+                        # If the role the person wants is avalable he will
+                        # receieve it and the role_amounts will be updated.
+        if person.role is None and 'Any' not in person.role_preference:
+            Player.players_off_role += 1
+            # If the role the capatin wants is taken, he will
+            # Get one assigned later with the 'Any' play/capt
     # These next 2 loops distribute the remaining free roles amongst the
     # captains and players. Priorty: High->Low MMR,Position 1 -> Position 5
-    everyone = list()
-    for player in players:
-        everyone.append(player)
-    for captain in captains:
-        everyone.append(captain)	
-    everyone.sort(key= lambda x: x.real_mmr, reverse= True)
+    everyone.sort(key=lambda x: x.real_mmr, reverse=True)
     for person in everyone:
-        if person.role_preference == 'Any' or person.role == None:
-            for role in enumerate(role_amounts):
-                if role[0] == 0:
+        if person.role is None:
+            for role_and_amount in enumerate(role_amounts):
+                # role_and_amount will return tuples with first value
+                # being the role, the second value the amount of players
+                # already on that role.
+                if role_and_amount[0] == 0:
                     continue
-                elif role[1] < team_amount:
-                    role_amounts[role[0]] += 1
-                    person.role = role[0]
+                elif role_and_amount[1] < team_amount:
+                    role_amounts[role_and_amount[0]] += 1
+                    person.role = role_and_amount[0]
+                    person.calc_mmr()
                     break
-    return None
+    players = sorted(players, key=lambda x: x.mmr, reverse=True)
+    captains = sorted(captains, key=lambda x: x.mmr, reverse=True)
+    return players, captains
 
 
 def distribute_captains(captains, teams):
@@ -201,7 +214,7 @@ def distribute_captains(captains, teams):
         teams[i].set_captain(captains[i])
 
 
-def distribute_player(players, teams, cur_round, current_index = None):
+def distribute_player(players, teams, cur_round, current_index=None):
     """
     Takes the highest MMR player yet to be distributed and tries to add them
     to the team with the lowest MMR average. (With the right amount of players
@@ -244,7 +257,9 @@ def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
     """
     with open(outfile, mode='w+') as outfile:
         writer = csv.writer(outfile, delimiter=';')
-        writer.writerow(['There is a maximum spread of %.1f on the team MMR\'rs' % max_spread])
+        writer.writerow([
+            'There is a maximum spread of %.1f on the team MMR\'rs' %
+            max_spread])
         writer.writerow(
             [role_frac + ' People are playing their preffered roles'])
         i = 0
@@ -261,10 +276,10 @@ def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
 
 def __main__(playerfile, outfile='Outfile.csv'):
     players, teamless_players, team_amount = create_players(playerfile)
-    total_players = team_amount*5
+    total_players = team_amount * 5
     players, captains = update_captain_status(players, team_amount)
     teams = create_teams(team_amount)
-    distribute_roles(players, captains, team_amount)
+    players, captains = distribute_roles(players, captains, team_amount)
     distribute_captains(captains, teams)
     players_worklist = players.copy()
     for cur_round in range(1, 5):
@@ -275,7 +290,7 @@ def __main__(playerfile, outfile='Outfile.csv'):
     for team in teams:
         del team.team['Playercount']
     maximum_spread = maximum_avg - minimum_avg
-    players_on_role_frac = str(team_amount*5 - Player.players_off_role) + \
+    players_on_role_frac = str(team_amount * 5 - Player.players_off_role) + \
                            '/' + str(total_players)
     teamless_players_out = list()
     for player in teamless_players:
@@ -289,14 +304,8 @@ if len(sys.argv) == 1:
 if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_Normal')
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.1.a')
-    print('Last updated on 19/01/2018')
-elif not sys.argv[1].endswith('.csv'):
-        print('\nInput error')
-        print('Input file is not a .csv file')
-        print('Correct commandline input is:')
-        print('python <name of DotaTeamMaker> <Input data> <Optional: '
-              'Outfile name>')
+    print('Current version: 1.1.b')
+    print('Last updated on 27/01/2018')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
@@ -318,7 +327,7 @@ elif len(sys.argv) == 3:
     try:
         if isfile(sys.argv[2]):
             print('This file will be overwritten: '
-                                 + str(sys.argv[2]))
+                  + str(sys.argv[2]))
             confirmation = input('Are you sure? (y/n)')
             if confirmation == 'y':
                 __main__(sys.argv[1], sys.argv[2])
@@ -334,4 +343,3 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
-
