@@ -28,7 +28,6 @@ class Player(object):
     # Didn't put in getters and setters because I'm not sure yet
     # Where I want to go with this program.
     players_off_role = 0
-    weights = {1: 1.25, 2: 1.25, 3: 1, 4: 0.75, 5: 0.75}
 
     def __init__(self, name, mmr, role, captain_pref):
         self.name = name
