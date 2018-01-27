@@ -30,7 +30,7 @@ class Player(object):
     players_off_role = 0
     weights = {1: 1.25, 2: 1.25, 3: 1, 4: 0.75, 5: 0.75}
 
-    def __init__(self, name, mmr, role, captain_pref):
+    def __init__(self, name, mmr, captain_pref, roles):
         self.name = name
 
         try:
@@ -40,27 +40,26 @@ class Player(object):
 
         self.mmr = None
 
-        role = role.split(',')
-        for i in range(len(role)):
-            if role[i] == 'Any':
-                break
-            elif int(role[i]) in POSSIBLE_ROLES:
-                role[i] = int(role[i])
+        role_list = list()
+        for role in roles:
+            if role == 'Any' or int(role) in POSSIBLE_ROLES:
+                if role == 'Any':
+                    role_list.append('Any')
+                else:
+                    role_list.append(int(role))
             else:
                 sys.exit('Role has to be a number between 1 and 5 or '
-                         '\'Any\'.')
-        self.role_preference = role
-
+                         '\'Any\'. Not ' + str(role))
+        self.role_preference = role_list
         self.role = None
 
-        if captain_pref == 'True' or captain_pref == 'False' or captain_pref \
-                is True or captain_pref is False:
+        if captain_pref == 'True' or captain_pref == 'False':
             if captain_pref == 'True':
                 captain_pref = True
             elif captain_pref == 'False':
                 captain_pref = False
         else:
-            sys.exit('The active field has to be True or '
+            sys.exit('The captain field has to be True or '
                      'False. Not ' + str(captain_pref))
         self.captain_preference = captain_pref
 
@@ -122,9 +121,7 @@ def create_players(playerfile):
     with open(playerfile) as infile:
         reader = csv.reader(infile, delimiter=';')
         for line in reader:
-            if line[4] == 'True':
-                # Checks if the player is on 'Active'.
-                players.append(Player(line[0], line[1], line[2], line[3]))
+            players.append(Player(line[0], line[1], line[2], line[3:]))
     team_amount = len(players) // 5
     players = sorted(players, key=lambda x: x.real_mmr, reverse=True)
     teamless_players = players[team_amount * 5:]
@@ -308,7 +305,7 @@ def __main__(playerfile, outfile='Outfile.csv'):
     for player in teamless_players:
         teamless_players_out.append(player.name)
     write_away(teams, maximum_spread, players_on_role_frac,
-               teamless_players_out, outfile)
+        teamless_players_out, outfile)
 
 
 if len(sys.argv) == 1:
@@ -317,8 +314,8 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.1.b')
-    print('Last updated on 27/01/2018')
+    print('Current version: 1.1.c')
+    print('Last updated on 28/01/2018')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
