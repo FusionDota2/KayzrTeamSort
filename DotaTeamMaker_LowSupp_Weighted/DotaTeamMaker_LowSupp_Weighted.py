@@ -161,8 +161,8 @@ def distribute_roles(everyone, team_amount):
         role_amounts.append(0)
     # 6 entries so that the role matches the index in the list.
     # This is just QOL.
-    bottompercentplayeramount = round(7 * len(everyone) / 10)
-    # Amount of players in the bottom 70 percent.
+    bottompercentplayeramount = round(6* len(everyone) / 10)
+    # Amount of players in the bottom 60 percent.
     for proposed_role in [5, 4]:
         # The bottom 70 percent will get support priority and be given
         # the support role if it is in their top 3. Untill there are enough
@@ -341,7 +341,7 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.2.a')
+    print('Current version: 1.2.b')
     print('Last updated on 06/02/2018')
 elif len(sys.argv) == 2:
     try:
