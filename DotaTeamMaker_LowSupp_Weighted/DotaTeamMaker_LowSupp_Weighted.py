@@ -277,7 +277,7 @@ def write_away(teams, max_spread, choice_tracker, teamless_player_list,
     """
     Writes the team data to a csv file (one is created if it doesn't exist
     yet) that includes the teamlist, max mmr spread and the fraction of
-    players playing their preffered role.
+    players playing their n'th role.
     """
     with open(outfile, mode='w+') as outfile:
         writer = csv.writer(outfile, delimiter=';')
