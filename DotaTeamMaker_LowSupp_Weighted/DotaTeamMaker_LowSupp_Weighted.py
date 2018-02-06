@@ -27,8 +27,7 @@ POSSIBLE_ROLES = [1, 2, 3, 4, 5]
 class Player(object):
     # Didn't put in getters and setters because I'm not sure yet
     # Where I want to go with this program.
-    players_off_role = 0
-    weights = {1: 1.25, 2: 1.25, 3: 1, 4: 0.75, 5: 0.75}
+    weights = {1: 1.3, 2: 1.3, 3: 1, 4: 0.7, 5: 0.7}
 
     def __init__(self, name, mmr, captain_pref, roles):
         self.name = name
@@ -84,7 +83,7 @@ class Team(object):
         self.playercount = 0
         self.captain = None
         self.team = {1: None, 2: None, 3: None, 4: None, 5: None, 'Captain':
-            None, 'Avg': 0, 'Playercount': 0}
+                     None, 'Avg': 0, 'Playercount': 0}
 
     def __str__(self):
         return str(self.team)
@@ -155,47 +154,44 @@ def create_teams(team_amount):
     return teams
 
 
-def distribute_roles(players, captains, team_amount):
+def distribute_roles(everyone, team_amount):
     role_amounts = list()
-    everyone = list()
-    for player in players:
-        everyone.append(player)
-    for captain in captains:
-        everyone.append(captain)
-    everyone.sort(key=lambda x: x.real_mmr)
     # This will be used to check how many players of each role there are.
     for i in range(6):
         role_amounts.append(0)
     # 6 entries so that the role matches the index in the list.
     # This is just QOL.
+    bottompercentplayeramount = round(7 * len(everyone) / 10)
+    # Amount of players in the bottom 70 percent.
     for proposed_role in [5, 4]:
+        # The bottom 70 percent will get support priority and be given
+        # the support role if it is in their top 3. Untill there are enough
+        # supports.
+        for preference_number in range(3):
+            for person in everyone[:bottompercentplayeramount]:
+                if len(person.role_preference) > preference_number and \
+                                person.role is None:
+                    role = person.role_preference[preference_number]
+                    if role == 'Any':
+                        continue
+                    if role == proposed_role and role_amounts[proposed_role] \
+                            < team_amount:
+                        person.role = proposed_role
+                        role_amounts[proposed_role] += 1
+                        person.calc_mmr()
+                        continue
+    for preference_number in range(5):
         for person in everyone:
-            for role in person.role_preference:
-                if role == 'Any':
-                    continue
-                if role == proposed_role and role_amounts[proposed_role] \
-                        < team_amount and person.role == None:
-                    person.role = proposed_role
-                    role_amounts[proposed_role] += 1
-                    person.calc_mmr()
-                    break
-    for person in everyone:
-        if person.role is None:
-            for role in person.role_preference:
-                if role == 'Any':
-                    break
-                else:
+            if person.role is None and person.role_preference[0] != 'Any':
+                if len(person.role_preference) > preference_number:
+                    role = person.role_preference[preference_number]
                     if role_amounts[role] < team_amount:
                         person.role = role
                         role_amounts[role] += 1
                         person.calc_mmr()
-                        break
+                        continue
                         # If the role the person wants is avalable he will
                         # receieve it and the role_amounts will be updated.
-        if person.role is None and 'Any' not in person.role_preference:
-            Player.players_off_role += 1
-            # If the role the capatin wants is taken, he will
-            # Get one assigned later with the 'Any' play/capt
     # These next 2 loops distribute the remaining free roles amongst the
     # captains and players. Priorty: High->Low MMR,Position 1 -> Position 5
     everyone.sort(key=lambda x: x.real_mmr, reverse=True)
@@ -212,9 +208,7 @@ def distribute_roles(players, captains, team_amount):
                     person.role = role_and_amount[0]
                     person.calc_mmr()
                     break
-    players = sorted(players, key=lambda x: x.mmr, reverse=True)
-    captains = sorted(captains, key=lambda x: x.mmr, reverse=True)
-    return players, captains
+    return None
 
 
 def distribute_captains(captains, teams):
@@ -258,7 +252,28 @@ def distribute_player(players, teams, cur_round, current_index=None):
         return distribute_player(players, teams, cur_round, current_index + 1)
 
 
-def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
+def calc_preference_numbers(everyone):
+    """
+    calculates how many players are on their n'th role/
+    """
+    choice_tracker = list()
+    for i in range(6):
+        choice_tracker.append(0)
+    for person in everyone:
+        if person.role in person.role_preference:
+            choice_tracker[person.role_preference.index(person.role)] += 1
+        else:
+            choice_tracker[5] += 1
+    return choice_tracker
+
+
+def round_team_averages(teams):
+    for team in teams:
+        team.team['Avg'] = round(team.team['Avg'])
+
+
+def write_away(teams, max_spread, choice_tracker, teamless_player_list,
+               outfile):
     """
     Writes the team data to a csv file (one is created if it doesn't exist
     yet) that includes the teamlist, max mmr spread and the fraction of
@@ -269,9 +284,17 @@ def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
         writer.writerow([
             'There is a maximum spread of %.1f on the team MMR\'rs' %
             max_spread])
-        writer.writerow(
-            [role_frac + ' People are playing their preffered roles'])
+        prefixwords = ['primary', 'secondary', 'tertiary', 'quaternary',
+                       'quirnary']
+        for position in range(len(choice_tracker)-1):
+            writer.writerow([str(choice_tracker[position]) + ' people are '
+                                                             'playing their '
+                             + prefixwords[position] + ' role.'])
+        writer.writerow([str(choice_tracker[5]) + ' people are not playing '
+                                                  'any of their submitted '
+                                                  'roles.'])
         i = 0
+        round_team_averages(teams)
         for team in teams:
             i += 1
             writelist = list()
@@ -285,10 +308,15 @@ def write_away(teams, max_spread, role_frac, teamless_player_list, outfile):
 
 def __main__(playerfile, outfile='Outfile.csv'):
     players, teamless_players, team_amount = create_players(playerfile)
-    total_players = team_amount * 5
     players, captains = update_captain_status(players, team_amount)
+    everyone = list()
+    for player in players:
+        everyone.append(player)
+    for captain in captains:
+        everyone.append(captain)
+    everyone.sort(key=lambda x: x.real_mmr)
     teams = create_teams(team_amount)
-    players, captains = distribute_roles(players, captains, team_amount)
+    distribute_roles(everyone, team_amount)
     distribute_captains(captains, teams)
     players_worklist = players.copy()
     for cur_round in range(1, 5):
@@ -299,13 +327,12 @@ def __main__(playerfile, outfile='Outfile.csv'):
     for team in teams:
         del team.team['Playercount']
     maximum_spread = maximum_avg - minimum_avg
-    players_on_role_frac = str(team_amount * 5 - Player.players_off_role) + \
-                           '/' + str(total_players)
     teamless_players_out = list()
     for player in teamless_players:
         teamless_players_out.append(player.name)
-    write_away(teams, maximum_spread, players_on_role_frac,
-        teamless_players_out, outfile)
+    choice_tracker = calc_preference_numbers(everyone)
+    write_away(teams, maximum_spread, choice_tracker,
+               teamless_players_out, outfile)
 
 
 if len(sys.argv) == 1:
@@ -314,8 +341,8 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.1.c')
-    print('Last updated on 28/01/2018')
+    print('Current version: 1.2.a')
+    print('Last updated on 06/02/2018')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
