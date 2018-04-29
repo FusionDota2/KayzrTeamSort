@@ -92,7 +92,6 @@ class Team(object):
         total = 0
         for entry in self.playerlist:
             if isinstance(entry, Player):
-                print(entry)
                 total += entry.mmr
         self.average = float(total / self.playercount)
         self.team['Avg'] = self.average
