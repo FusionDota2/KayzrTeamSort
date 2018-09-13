@@ -5,15 +5,15 @@ https://github.com/stephanblom/benedota-playerdraft-bot
 
 Current versions:
 
-  * DotaTeamMaker_Normal (Still version 1.1.c, will update if requested.):
-    * Distributes roles amongst players first. With priority from High to low MMR. Pos 1 to 5.
-    * Only takes into account MMR at the time of player distribution
-    * Possible input includes Multiple roles in order of wanting and 'Any'.
-
   * DotaTeamMaker_LowSupp_Weighted (Currently used in bot):
-    * Same sorting algorithm as DotaTeamMaker_LowSupp.
+    * Naïve sorting algorithm with pretty good results.
     * Players get appointed custom MMR' based on their real MMR and the impact of the role they are playing.
     * Current weights: {1: 1.3, 2: 1.3, 3: 1, 4: 0.70, 5: 0.70}
+
+  * DotaTeamMaker_BestSolution:
+    * Best solution algorithm. But not yet calculable in workable time.
+    * Finds best possible solution for the role distribution. (Not yet team distribution.)
+    * Also with Weighted MMR
 
 Deprecated Versions:
 
