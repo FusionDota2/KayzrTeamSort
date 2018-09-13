@@ -8,7 +8,7 @@
     (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    but WITHOUT ANY WARRANTY; without everyoneen the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
@@ -20,13 +20,12 @@
 import csv
 import sys
 from os.path import isfile
+import time
 
 POSSIBLE_ROLES = [1, 2, 3, 4, 5]
 
 
 class Player(object):
-    # Didn't put in getters and setters because I'm not sure yet
-    # Where I want to go with this program.
     weights = {1: 1.3, 2: 1.3, 3: 1, 4: 0.7, 5: 0.7}
 
     def __init__(self, name, mmr, captain_pref, roles):
@@ -67,8 +66,14 @@ class Player(object):
     def __str__(self):
         return '%s: MMR = %s, role_pref = %s, role = %s, captainpref = %s, ' \
                'captainstatus = %s' % (self.name, self.real_mmr,
-        self.role_preference, self.role, self.captain_preference,
-        self.active_captain)
+                                       self.role_preference, self.role, self.captain_preference,
+                                       self.active_captain)
+
+    def __repr__(self):
+        return '%s: MMR = %s, role_pref = %s, role = %s, captainpref = %s, ' \
+               'captainstatus = %s' % (self.name, self.real_mmr,
+                                       self.role_preference, self.role, self.captain_preference,
+                                       self.active_captain)
 
     def calc_mmr(self):
         self.mmr = self.real_mmr * self.weights[self.role]
@@ -83,7 +88,7 @@ class Team(object):
         self.playercount = 0
         self.captain = None
         self.team = {1: None, 2: None, 3: None, 4: None, 5: None, 'Captain':
-                     None, 'Avg': 0, 'Playercount': 0}
+            None, 'Avg': 0, 'Playercount': 0}
 
     def __str__(self):
         return str(self.team)
@@ -121,6 +126,11 @@ def create_players(playerfile):
         reader = csv.reader(infile, delimiter=';')
         for line in reader:
             players.append(Player(line[0], line[1], line[2], line[3:]))
+            for role in POSSIBLE_ROLES:
+                if 'Any' in players[-1].role_preference:
+                    players[-1].role_preference.remove('Any')
+                if role not in players[-1].role_preference:
+                    players[-1].role_preference.append(role)
     team_amount = len(players) // 5
     players = sorted(players, key=lambda x: x.real_mmr, reverse=True)
     teamless_players = players[team_amount * 5:]
@@ -154,105 +164,125 @@ def create_teams(team_amount):
     return teams
 
 
-def create_daughter_nodes(everyone, current_player, current_path, distance_weights):
-    daughter_nodes_paths = list()
-    if current_player == 'S':
+def create_children_nodes(everyone, curr_player, distance_weights, role_count, team_amount):
+    children_nodes = list()
+    if curr_player == 'S':
         next_player = everyone[0]
     else:
-        next_player = everyone[everyone.index(current_player) + 1]
-    for i in range(1, 6):
-        daughter_nodes_paths.append(current_path.copy())
-    for i in range(1, 6):
-        daughter_nodes_paths[i-1].append([next_player, i, distance_weights[next_player.role_preference.index(i)]])
-    return daughter_nodes_paths
+        next_player = everyone[everyone.index(curr_player) + 1]
+    for role in range(1, 6):
+        if role_count[role] < team_amount:
+            children_nodes.append([next_player, role, distance_weights[next_player.role_preference.index(role)]])
+    return children_nodes
 
 
-def validate_daughter_nodes(everyone, daughter_nodes_paths, visited_paths, current_distance, current_best_distance,
-                            distance_weights, role_counter, team_amount):
-    daughter_nodes_paths_itercopy = daughter_nodes_paths.copy()
-    for path in daughter_nodes_paths_itercopy:
-        if path in visited_paths:
-            daughter_nodes_paths.remove(path)
-        elif path[-1][2] + min(distance_weights) * (
-                len(everyone) - everyone.index(path[-1][0]) - 1) + current_distance > current_best_distance:
-            visited_paths.append(path)
-            daughter_nodes_paths.remove(path)
-        elif role_counter[path[-1][1]] == team_amount:
-            daughter_nodes_paths.remove(path)
-    else:
-        return daughter_nodes_paths
+def validate_children_nodes(everyone, children_nodes, visited_paths, curr_distance, curr_best_distance,
+                            distance_weights, curr_path):
+    children_nodes_itercopy = children_nodes.copy()
+    for child in children_nodes_itercopy:
+        wouldbe_path = curr_path + [child]
+        if wouldbe_path[-1][2] + (min(distance_weights) * (len(wouldbe_path) -1 - len(everyone))) + curr_distance > curr_best_distance:
+            visited_paths.append(wouldbe_path)
+            children_nodes.remove(child)
+            #print('CHILD REMOVED DUE TO LENGTH')
+            continue
+        if wouldbe_path in visited_paths:
+            children_nodes.remove(child)
+            #print('VISITED ALREADY')
+            #print('NEW LENGTH:')
+            #print(len(children_nodes))
+    return children_nodes
 
 
-def choose_jump_node(daughter_nodes_paths):
-    daughter_nodes_paths.sort(key=lambda x: x[-1][2])
-    chosen_node = daughter_nodes_paths[0][-1]
+def choose_jump_node(children_nodes):
+    children_nodes.sort(key=lambda x: x[2]) # The node with the shortest distance gets put first.
+    chosen_node = children_nodes[0]
     return chosen_node
 
 
-def jump_node(chosen_node, current_distance, role_counter, current_node, current_path):
-    current_path.append(chosen_node)
-    current_player = chosen_node[0]
+def jump_node(chosen_node, curr_distance, role_counter, curr_path):
+    curr_path.append(chosen_node)
+    curr_player = chosen_node[0]
     role_counter[chosen_node[1]] += 1
-    current_distance += chosen_node[2]
-    current_node = chosen_node
-    return current_path, current_player, role_counter, current_distance, current_node
+    curr_distance += chosen_node[2]
+    curr_node = chosen_node
+    return curr_path, curr_player, role_counter, curr_distance, curr_node
 
 
-def end_node_checker(everyone, current_path):
-    if current_path[-1][0] == everyone[-1]:
+def end_node_checker(everyone, curr_path):
+    if curr_path[-1][0] == everyone[-1]:
         return True
     else:
         return False
 
 
-def start_node_checker(current_path):
-    if current_path[-1] == ['S', None, 0]:
+def start_node_checker(curr_path):
+    if curr_path[-1] == ['S', None, 0]:
         return True
     else:
         return False
 
 
-def backtrack(current_path, visited_paths, current_distance, role_counter):
-    current_player = current_path[-2][0]
-    visited_paths.append(current_path)
-    role_counter[current_path[-1][1]] -= 1
-    current_distance -= current_path[-1][2]
-    current_path = current_path[:-1]
-    return current_path, visited_paths, current_distance, role_counter, current_player
+def backtrack(curr_path, visited_paths, curr_distance, role_counter):
+    #print('BACKTRACKING FROM')
+    #print(curr_path[-1][0])
+    #print('TO:')
+    curr_player = curr_path[-2][0]
+    #print(curr_player)
+    visited_paths.append(curr_path)
+    role_counter[curr_path[-1][1]] -= 1
+    curr_distance -= curr_path[-1][2]
+    curr_path = curr_path[:-1]
+    return curr_path, visited_paths, curr_distance, role_counter, curr_player
 
 
-def distribution(ev):
-    t_a = len(ev) / 5  # Amount of teams
-    c_d = 0  # Current distance, a measure used in the distribution. Less = Better
-    v_p = list()  # Configurations already tested
-    c_pa = [['S', None, 0]]  # This is format for node[player_object, Role, Distance]
+def distribution(everyone):
+    team_amount = len(everyone) / 5  # Amount of teams
+    curr_distance = 0  # curr distance, a measure used in the distribution. Less = Better
+    visited_paths = list()  # Configurations already tested
+    curr_path = [['S', None, 0]]  # This is format for node[player_object, Role, Distance]
     # Path is a list of nodes in order
-    c_pl = c_pa[0][0]  # Last player that got his role
-    c_n = c_pa[-1]  # Last node that got hopped to
-    c_b_p = list()  # Best role configuration in nodepath form.
-    d_w = [0.2, 0.4, 0.6, 0.8, 1.0]  # Pernalty points for assinging roles in order of preference
-    c_b_d = len(ev) * max(d_w) + 1  # Current best distance. Lowest amount of penalty points corresponding with best
-    # found confirguration so far.
-    r_c = [0, 0, 0, 0, 0, 0]  # Rolecounter. Keeps track of people currently one said role.
+    curr_player = curr_path[0][0]  # Last player that got his role
+    curr_node = curr_path[-1]  # Last node that got hopped to
+    distance_weights = [0.2, 0.4, 0.6, 0.8, 1.0]  # Penalty points for assigning roles in order of preference
+    curr_best_path = list()  # Best role configuration in nodepath form.
+    curr_best_distance = len(everyone) * max(distance_weights) + 1  # curr best distance. Lowest amount of penalty
+    # points corresponding with best found configuration so far.
+    role_count = [0, 0, 0, 0, 0, 0]  # Rolecounter. Keeps track of people currly one said role.
     StopDistribution = False
+    removelist = list()
+    for player in everyone:
+        if player.role_preference == ['Any']:
+            everyone.append(player)
+            removelist.append(player)
+            player.role_preference = [1, 2, 3, 4, 5]
+    for double in removelist:
+        everyone.remove(double)
+    #print('Distribution initiated')
     while not StopDistribution:
-        dnp = create_daughter_nodes(ev, c_pl, c_pa, d_w)
-        dnp = validate_daughter_nodes(ev, dnp, v_p, c_d, c_b_d, d_w, r_c, t_a)
-        if len(dnp) != 0:
-            chosen_node = choose_jump_node(dnp)
-            c_pa, c_pl, r_c, c_d, c_n = jump_node(chosen_node, c_d, r_c, c_n, c_pa)
-            path_end = end_node_checker(ev, c_pa)
-            if path_end is True:
-                if c_d < c_b_d:
-                    c_b_d = c_d
-                    c_b_p = c_pa
-                c_pa, v_p, c_d, r_c, c_pl = backtrack(c_pa, v_p, c_d, r_c)
+        #time.sleep(0.3)
+        children_nodes = create_children_nodes(everyone, curr_player, distance_weights, role_count, team_amount)
+        children_nodes = validate_children_nodes(everyone, children_nodes, visited_paths, curr_distance, curr_best_distance, distance_weights, curr_path)
+        if len(children_nodes) != 0:
+            chosen_node = choose_jump_node(children_nodes)
+            #print('JUMPING TO:')
+            #print(chosen_node[0])
+            #print('WITH ROLE:')
+            #print(chosen_node[1])
+            curr_path, curr_player, role_count, curr_distance, curr_node = jump_node(chosen_node, curr_distance, role_count, curr_path)
+            if end_node_checker(everyone, curr_path) is True:
+                #print('WE ARE AT THE END PLAYER')
+                if curr_distance < curr_best_distance:
+                    curr_best_distance = curr_distance
+                    curr_best_path = curr_path
+                curr_path, visited_paths, curr_distance, role_count, curr_player = backtrack(curr_path, visited_paths, curr_distance, role_count)
         else:
-            if start_node_checker(c_pa) is not True:
-                c_pa, v_p, c_d, r_c, c_pl = backtrack(c_pa, v_p, c_d, r_c)
-            elif start_node_checker(c_pa) is True:
+            if start_node_checker(curr_path) is not True:
+                curr_path, visited_paths, curr_distance, role_count, curr_player = backtrack(curr_path, visited_paths, curr_distance, role_count)
+            elif start_node_checker(curr_path) is True:
+                #print('Optimal solution found')
                 StopDistribution = True
-    return c_b_p
+    return curr_best_path
 
 
 def set_player_roles(distri):
@@ -266,7 +296,7 @@ def distribute_captains(captains, teams):
         teams[i].set_captain(captains[i])
 
 
-def distribute_player(players, teams, cur_round, current_index=None):
+def distribute_player(players, teams, cur_round, curr_index=None):
     """
     Takes the highest MMR player yet to be distributed and tries to add them
     to the team with the lowest MMR average. (With the right amount of players
@@ -274,11 +304,11 @@ def distribute_player(players, teams, cur_round, current_index=None):
     the player is added to the team. Else this function is called recursively
     now consindering the second highest MMR player yet to be distributed.
     """
-    if current_index is None:
-        current_index = 0
-    current_player = players[current_index]
-    # Variables that will hold the lowest avg MMR in the current teamlist
-    # with the amount of players matching the current round of players
+    if curr_index is None:
+        curr_index = 0
+    curr_player = players[curr_index]
+    # Variables that will hold the lowest avg MMR in the curr teamlist
+    # with the amount of players matching the curr round of players
     # being distributed.
     templist = list()
     for team in teams:
@@ -286,19 +316,18 @@ def distribute_player(players, teams, cur_round, current_index=None):
             templist.append(team)
     min_team_avg = min([l.average for l in templist])
     min_avg_team = None
-    # Fucking IDE is crying so i have to put in this last line.
     for team in templist:
         if team.average == min_team_avg:
             min_avg_team = team
-    if min_avg_team.team[current_player.role] is None:
+    if min_avg_team.team[curr_player.role] is None:
         # Looks if that team has a player on the role that the highest MMR
         # player fills. If not, adds him to the team. If so, calls function
         # recursively now looking at the second highest mmr players.
-        min_avg_team.add_player(current_player)
-        players.remove(current_player)
+        min_avg_team.add_player(curr_player)
+        players.remove(curr_player)
         return None
     else:
-        return distribute_player(players, teams, cur_round, current_index + 1)
+        return distribute_player(players, teams, cur_round, curr_index + 1)
 
 
 def calc_preference_numbers(everyone):
@@ -335,7 +364,7 @@ def write_away(teams, max_spread, choice_tracker, teamless_player_list,
             max_spread])
         prefixwords = ['primary', 'secondary', 'tertiary', 'quaternary',
                        'quirnary']
-        for position in range(len(choice_tracker)-1):
+        for position in range(len(choice_tracker) - 1):
             writer.writerow([str(choice_tracker[position]) + ' people are '
                                                              'playing their '
                              + prefixwords[position] + ' role.'])
@@ -357,7 +386,9 @@ def write_away(teams, max_spread, choice_tracker, teamless_player_list,
 
 def __main__(playerfile, outfile='Outfile.csv'):
     players, teamless_players, team_amount = create_players(playerfile)
+    #print('Player creation succesful')
     players, captains = update_captain_status(players, team_amount)
+    #print('Captain status update succesful')
     everyone = list()
     for player in players:
         everyone.append(player)
@@ -365,15 +396,21 @@ def __main__(playerfile, outfile='Outfile.csv'):
         everyone.append(captain)
     everyone.sort(key=lambda x: x.real_mmr)
     teams = create_teams(team_amount)
+    #print('Team creation succesful')
     best_distribution = distribution(everyone)
+    #print('Best distribution found')
     set_player_roles(best_distribution)
+    #print('Player roles set in objects')
     for person in everyone:
         person.calc_mmr()
+    #print('MMR calculation succesful')
     distribute_captains(captains, teams)
+    #print('Captain distributed amongst teams')
     players_worklist = players.copy()
     for cur_round in range(1, 5):
         for i in range(team_amount):
             distribute_player(players_worklist, teams, cur_round)
+    #print('Player distribution succesful')
     minimum_avg = min([l.average for l in teams])
     maximum_avg = max([l.average for l in teams])
     for team in teams:
@@ -387,15 +424,14 @@ def __main__(playerfile, outfile='Outfile.csv'):
                teamless_players_out, outfile)
 
 
-
 if len(sys.argv) == 1:
     sys.argv.append('versioninfo')
 if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
-    print('Current weights: ' + str(Player.weights))
+    print('curr weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.2.b')
-    print('Last updated on 06/02/2018')
+    print('curr version: 1.3.b')
+    print('Last updated on 13/09/2018')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
@@ -433,4 +469,3 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
-		
