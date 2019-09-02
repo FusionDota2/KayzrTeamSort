@@ -1,6 +1,6 @@
 """
  This program sorts players into teams for Dota2 tournaments.
- Copyright (C) 2018  Jonathan "Fusion" Driessen
+ Copyright (C) 2019  Jonathan "Fusion" Driessen
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,17 +25,17 @@ POSSIBLE_ROLES = [1, 2, 3, 4, 5]
 
 
 class Player(object):
-    # Didn't put in getters and setters because I'm not sure yet
-    # Where I want to go with this program.
     weights = {1: 1.3, 2: 1.3, 3: 1, 4: 0.7, 5: 0.7}
 
-    def __init__(self, name, mmr, captain_pref, roles):
+    def __init__(self, name, core_mmr, support_mmr, captain_pref, roles):
         self.name = name
-
+        self.support_mmr = None
+        self. core_mmr = None
         try:
-            self.real_mmr = int(mmr)
+            self.real_core_mmr = int(core_mmr)
+            self.real_support_mmr = int(support_mmr)
         except:
-            sys.exit('MMR has to be a number. Not ' + mmr)
+            sys.exit('MMR has to be a number. Not ' + core_mmr + support_mmr)
 
         self.mmr = None
 
@@ -65,13 +65,14 @@ class Player(object):
         self.active_captain = False
 
     def __str__(self):
-        return '%s: MMR = %s, role_pref = %s, role = %s, captainpref = %s, ' \
-               'captainstatus = %s' % (self.name, self.real_mmr,
-        self.role_preference, self.role, self.captain_preference,
-        self.active_captain)
+        return '%s: Core MMR = %s, Support MMR = %s, role_pref = %s, role = %s, captainpref = %s, ' \
+               'captainstatus = %s' % (self.name, self.real_core_mmr, self.real_support_mmr, self.role_preference, self.role, self.captain_preference, self.active_captain)
 
     def calc_mmr(self):
-        self.mmr = self.real_mmr * self.weights[self.role]
+        if self.role in [4,5]:
+            self.mmr = self.real_support_mmr * self.weights[self.role]
+        else:
+            self.mmr = self.real_core_mmr * self.weights[self.role]
 
 
 class Team(object):
@@ -120,9 +121,9 @@ def create_players(playerfile):
     with open(playerfile) as infile:
         reader = csv.reader(infile, delimiter=';')
         for line in reader:
-            players.append(Player(line[0], line[1], line[2], line[3:]))
+            players.append(Player(line[0], line[1], line[2], line[3], line[4:]))
     team_amount = len(players) // 5
-    players = sorted(players, key=lambda x: x.real_mmr, reverse=True)
+    players = sorted(players, key=lambda x: max(x.real_core_mmr,x.real_support_mmr), reverse=True)
     teamless_players = players[team_amount * 5:]
     players = players[:team_amount * 5]
     return players, teamless_players, team_amount
@@ -164,10 +165,10 @@ def distribute_roles(everyone, team_amount):
     bottompercentplayeramount = round(6* len(everyone) / 10)
     # Amount of players in the bottom 60 percent.
     for proposed_role in [5, 4]:
-        # The bottom 70 percent will get support priority and be given
-        # the support role if it is in their top 3. Untill there are enough
+        # The bottom 60 percent will get support priority and be given
+        # the support role if it is in their top 2. Until there are enough
         # supports.
-        for preference_number in range(3):
+        for preference_number in range(2):
             for person in everyone[:bottompercentplayeramount]:
                 if len(person.role_preference) > preference_number and \
                                 person.role is None:
@@ -180,6 +181,7 @@ def distribute_roles(everyone, team_amount):
                         role_amounts[proposed_role] += 1
                         person.calc_mmr()
                         continue
+    everyone.sort(key=lambda x: max(x.real_core_mmr, x.real_support_mmr), reverse=True)
     for preference_number in range(5):
         for person in everyone:
             if person.role is None and person.role_preference[0] != 'Any':
@@ -194,7 +196,6 @@ def distribute_roles(everyone, team_amount):
                         # receieve it and the role_amounts will be updated.
     # These next 2 loops distribute the remaining free roles amongst the
     # captains and players. Priorty: High->Low MMR,Position 1 -> Position 5
-    everyone.sort(key=lambda x: x.real_mmr, reverse=True)
     for person in everyone:
         if person.role is None:
             for role_and_amount in enumerate(role_amounts):
@@ -237,7 +238,6 @@ def distribute_player(players, teams, cur_round, current_index=None):
             templist.append(team)
     min_team_avg = min([l.average for l in templist])
     min_avg_team = None
-    # Fucking IDE is crying so i have to put in this last line.
     for team in templist:
         if team.average == min_team_avg:
             min_avg_team = team
@@ -314,7 +314,7 @@ def __main__(playerfile, outfile='Outfile.csv'):
         everyone.append(player)
     for captain in captains:
         everyone.append(captain)
-    everyone.sort(key=lambda x: x.real_mmr)
+    everyone.sort(key=lambda x: max(x.real_core_mmr, x.real_support_mmr))
     teams = create_teams(team_amount)
     distribute_roles(everyone, team_amount)
     distribute_captains(captains, teams)
@@ -341,8 +341,8 @@ if sys.argv[1] == 'versioninfo':
     print('\nDotaTeamMaker_LowSupp_Weighted')
     print('Current weights: ' + str(Player.weights))
     print('Written by Jonathan \'Fusion\' Driessen')
-    print('Current version: 1.2.b')
-    print('Last updated on 06/02/2018')
+    print('Current version: 1.3.a')
+    print('Last updated on 02/09/2019')
 elif len(sys.argv) == 2:
     try:
         __main__(sys.argv[1])
@@ -380,3 +380,4 @@ elif len(sys.argv) == 3:
               'Outfile name>')
     except:
         raise
+
